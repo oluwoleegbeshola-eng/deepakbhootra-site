@@ -1,0 +1,81 @@
+Options -Indexes
+
+# ── SECURITY HEADERS ──
+<IfModule mod_headers.c>
+    # Prevent clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+    # Prevent MIME sniffing
+    Header always set X-Content-Type-Options "nosniff"
+    # XSS protection
+    Header always set X-XSS-Protection "1; mode=block"
+    # Referrer policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    # Remove server info
+    Header unset Server
+    Header unset X-Powered-By
+    # Force HTTPS (uncomment if SSL active)
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# ── FORCE HTTPS ──
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Redirect HTTP to HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# ── CLEAN URLs (hide .html) ──
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    Options -Indexes
+
+    # If not a real file or directory
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # Serve .html version
+    RewriteRule ^([^.]+)$ $1.html [L]
+
+    # Redirect .html URLs to clean version
+    RewriteCond %{THE_REQUEST} /([^.]+)\.html [NC]
+    RewriteRule ^ /%1 [R=301,L]
+</IfModule>
+
+# ── HOMEPAGE ──
+DirectoryIndex index.html
+
+# ── PERFORMANCE: Browser Caching ──
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # HTML - short cache (content changes)
+    ExpiresByType text/html "access plus 1 hour"
+    # Images - long cache (product photos don't change often)
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    # CSS/JS
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+</IfModule>
+
+# ── COMPRESSION ──
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/plain
+</IfModule>
+
+# ── ERROR PAGES ──
+ErrorDocument 404 /index.html
+ErrorDocument 403 /index.html
+
+# ── BLOCK COMMON ATTACK PATTERNS ──
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Block script injection attempts
+    RewriteCond %{QUERY_STRING} (<|%3C).*script.*(>|%3E) [NC,OR]
+    RewriteCond %{QUERY_STRING} GLOBALS(=|[|%[0-9A-Z]{0,2}) [OR]
+    RewriteCond %{QUERY_STRING} _REQUEST(=|[|%[0-9A-Z]{0,2})
+    RewriteRule .* - [F,L]
+</IfModule>
